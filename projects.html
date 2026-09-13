@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#060914">
 <meta name="description" content="Découvrez les projets publics CR3@TIX et ce que votre soutien permet d'améliorer.">
 <title>Les projets — CR3@TIX SOUTIEN</title>
+<script async src="https://kevinlabens-del.github.io/CR3-TIX-ANALYTIX./analytics.js" data-project-id="33b7a2f7-882c-497d-84bd-6ed0e4186333" data-project-key="cc72ff2c-cafb-4839-9e0a-df35b6a05260"></script>
 <style>
 :root{--bg:#05070d;--panel:rgba(13,18,32,.8);--line:rgba(109,104,255,.27);--text:#f5f7ff;--muted:#9fabc7;--cyan:#45e7ff;--violet:#8d63ff;--blue:#1687ff;--good:#55efb4;--shadow:0 24px 70px rgba(0,0,0,.4)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 12% 8%,rgba(69,231,255,.13),transparent 29%),radial-gradient(circle at 88% 16%,rgba(141,99,255,.16),transparent 31%),linear-gradient(160deg,#03050a 0%,#070b15 52%,#04050a 100%);overflow-x:hidden}
@@ -24,7 +25,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
 <main class="wrap">
   <header class="topbar">
     <div class="brand">CR3@TIX <span>SOUTIEN</span></div>
-    <div class="top-actions"><a class="back" href="index.html">← Retour au soutien</a><span class="pill">Projets publics CR3@TIX PROJECT</span></div>
+    <div class="top-actions"><a class="back" id="backSupport" href="index.html">← Retour au soutien</a><span class="pill">Projets publics CR3@TIX PROJECT</span></div>
   </header>
 
   <section class="hero">
@@ -47,7 +48,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
 
   <section class="cta">
     <div><h3>Tu veux aider l’ensemble de l’écosystème ?</h3><p>Tu peux aussi faire un soutien général, sans choisir un projet en particulier.</p></div>
-    <a href="index.html">Soutenir CR3@TIX</a>
+    <a id="supportGeneral" href="index.html">Soutenir CR3@TIX</a>
   </section>
   <footer class="footer">CR3@TIX — Concepteur de projet digital · De l’imagination à la conception</footer>
 </main>
@@ -68,8 +69,9 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
   };
   const DEFAULT_ICON='https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg';
   const grid=document.getElementById('grid'), search=document.getElementById('search'), filters=document.getElementById('filters'), sourceLabel=document.getElementById('sourceLabel'), countLabel=document.getElementById('countLabel');
-  let all=[], active='all';
+  let all=[], active='all', searchTimer=0;
 
+  const track=(type,properties={})=>{if(window.CreatixAnalytics&&typeof window.CreatixAnalytics.track==='function')return window.CreatixAnalytics.track(type,properties);setTimeout(()=>{if(window.CreatixAnalytics&&typeof window.CreatixAnalytics.track==='function')window.CreatixAnalytics.track(type,properties)},800);return false};
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const normalizeCategory=value=>{const k=String(value||'PROJET').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();return ({JEUX:'JEU',APPLICATIONS:'APPLICATION','SITES WEB':'SITE WEB'})[k]||k||'PROJET'};
   const slug=v=>String(v||'projet').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -92,10 +94,14 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
     return {id,name,url,icon:safeUrl(n.icon||n.image,'https://kevinlabens-del.github.io/creatix-project/')||DEFAULT_ICON,category:normalizeCategory(n.category||n.type),description:ENRICH[id]?.description||String(n.desc||n.description||'Un projet de l’écosystème CR3@TIX.').trim().slice(0,650),version:n.version?String(n.version).slice(0,30):'',progress:Math.max(0,Math.min(100,Number(n.progress)||0)),supportPurpose:n.supportPurpose?String(n.supportPurpose).trim().slice(0,700):''};
   };
   async function fetchJson(url,timeout=8000){const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),timeout);try{const r=await fetch(url,{cache:'no-store',credentials:'omit',signal:ctrl.signal,headers:{accept:'application/json'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(t)}}
-  function setFilters(){const cats=[...new Set(all.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'fr'));filters.innerHTML='<button class="filter active" data-filter="all">Tous</button>'+cats.map(c=>`<button class="filter" data-filter="${esc(c)}">${esc(c)}</button>`).join('');filters.addEventListener('click',e=>{const b=e.target.closest('.filter');if(!b)return;active=b.dataset.filter;[...filters.querySelectorAll('.filter')].forEach(x=>x.classList.toggle('active',x===b));render()});}
-  function render(){const q=search.value.trim().toLocaleLowerCase('fr');const visible=all.filter(p=>(active==='all'||p.category===active)&&(!q||`${p.name} ${p.description} ${p.category}`.toLocaleLowerCase('fr').includes(q)));countLabel.textContent=`${visible.length} projet${visible.length>1?'s':''}`;if(!visible.length){grid.innerHTML='<div class="empty">Aucun projet ne correspond à cette recherche.</div>';return}grid.innerHTML=visible.map(p=>{const reason=supportReason(p),support=`index.html?project=${encodeURIComponent(p.name)}&projectId=${encodeURIComponent(p.id)}`;return `<article class="project"><div class="head"><img class="icon" src="${esc(p.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer"><div class="meta"><span class="cat">${esc(p.category)}</span><h2>${esc(p.name)}</h2>${p.version?`<div class="version">Version ${esc(p.version)}</div>`:''}</div></div><p class="desc">${esc(p.description)}</p><div class="why"><b>💙 Ce que ton soutien aide à faire</b><p>${esc(reason)}</p></div>${p.progress?`<div class="progress-wrap"><div class="progress-label"><span>Développement</span><span>${p.progress}%</span></div><div class="track"><div class="bar" style="width:${p.progress}%"></div></div></div>`:''}<div class="actions">${p.url?`<a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Voir le projet ↗</a>`:''}<a class="btn primary" href="${support}">Soutenir ce projet</a></div></article>`}).join('');}
-  async function load(){let payload;try{payload=await fetchJson(FEED,7000)}catch(e){grid.innerHTML='<div class="error">Impossible de charger les projets pour le moment. Tu peux revenir à la page de soutien et réessayer plus tard.</div>';sourceLabel.textContent='Registre public temporairement indisponible';countLabel.textContent='';return}all=extract(payload).map(norm).filter(p=>p.url&&p.id!=='root'&&!EXCLUDED_IDS.has(p.id)&&!['BRANCHE','ECOSYSTEME'].includes(p.category));all=[...new Map(all.map(p=>[p.id,p])).values()];sourceLabel.textContent='Synchronisé avec les projets publics de CR3@TIX PROJECT';setFilters();render();}
-  search.addEventListener('input',render);load();
+  function setFilters(){const cats=[...new Set(all.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'fr'));filters.innerHTML='<button class="filter active" data-filter="all">Tous</button>'+cats.map(c=>`<button class="filter" data-filter="${esc(c)}">${esc(c)}</button>`).join('');filters.addEventListener('click',e=>{const b=e.target.closest('.filter');if(!b)return;active=b.dataset.filter;[...filters.querySelectorAll('.filter')].forEach(x=>x.classList.toggle('active',x===b));track('support_project_filter',{filter:active});render()});}
+  function render(){const q=search.value.trim().toLocaleLowerCase('fr');const visible=all.filter(p=>(active==='all'||p.category===active)&&(!q||`${p.name} ${p.description} ${p.category}`.toLocaleLowerCase('fr').includes(q)));countLabel.textContent=`${visible.length} projet${visible.length>1?'s':''}`;if(!visible.length){grid.innerHTML='<div class="empty">Aucun projet ne correspond à cette recherche.</div>';return}grid.innerHTML=visible.map(p=>{const reason=supportReason(p),support=`index.html?project=${encodeURIComponent(p.name)}&projectId=${encodeURIComponent(p.id)}`;return `<article class="project"><div class="head"><img class="icon" src="${esc(p.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer"><div class="meta"><span class="cat">${esc(p.category)}</span><h2>${esc(p.name)}</h2>${p.version?`<div class="version">Version ${esc(p.version)}</div>`:''}</div></div><p class="desc">${esc(p.description)}</p><div class="why"><b>💙 Ce que ton soutien aide à faire</b><p>${esc(reason)}</p></div>${p.progress?`<div class="progress-wrap"><div class="progress-label"><span>Développement</span><span>${p.progress}%</span></div><div class="track"><div class="bar" style="width:${p.progress}%"></div></div></div>`:''}<div class="actions">${p.url?`<a class="btn project-open" data-project-id="${esc(p.id)}" data-category="${esc(p.category)}" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Voir le projet ↗</a>`:''}<a class="btn primary project-support" data-project-id="${esc(p.id)}" data-category="${esc(p.category)}" href="${support}">Soutenir ce projet</a></div></article>`}).join('');}
+  async function load(){let payload;try{payload=await fetchJson(FEED,7000)}catch(e){grid.innerHTML='<div class="error">Impossible de charger les projets pour le moment. Tu peux revenir à la page de soutien et réessayer plus tard.</div>';sourceLabel.textContent='Registre public temporairement indisponible';countLabel.textContent='';track('support_catalog_error');return}all=extract(payload).map(norm).filter(p=>p.url&&p.id!=='root'&&!EXCLUDED_IDS.has(p.id)&&!['BRANCHE','ECOSYSTEME'].includes(p.category));all=[...new Map(all.map(p=>[p.id,p])).values()];sourceLabel.textContent='Synchronisé avec les projets publics de CR3@TIX PROJECT';setFilters();render();track('support_catalog_loaded',{projects:all.length});}
+  search.addEventListener('input',()=>{render();clearTimeout(searchTimer);searchTimer=setTimeout(()=>track('support_project_search',{length:search.value.trim().length,results:Number.parseInt(countLabel.textContent)||0}),700)});
+  grid.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;const projectId=a.dataset.projectId||'',category=a.dataset.category||'';if(a.classList.contains('project-support'))track('support_project_select',{project_id:projectId,category});else if(a.classList.contains('project-open'))track('support_project_open',{project_id:projectId,category})});
+  document.getElementById('backSupport')?.addEventListener('click',()=>track('support_return_home',{source:'header'}));
+  document.getElementById('supportGeneral')?.addEventListener('click',()=>track('support_general_select',{source:'catalog'}));
+  load();
 })();
 </script>
 </body>
